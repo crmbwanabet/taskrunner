@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LayerForge v3 — Constitution-Driven Build Orchestrator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050508; --surface: #0a0a12; --surface2: #0f0f1a; --surface3: #141420;
+  --border: #1a1a2e; --border-light: #252540;
+  --accent: #5eead4; --accent2: #818cf8; --accent3: #f472b6; --accent4: #fbbf24;
+  --red: #f43f5e; --green: #22c55e; --amber: #f59e0b; --blue: #3b82f6;
+  --text: #e2e8f0; --dim: #64748b; --muted: #334155;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+/* Header */
+.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.logo { display:flex; align-items:center; gap:12px; }
+.logo-icon { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:var(--bg); }
+.logo h1 { font-size:18px; font-weight:700; font-family:var(--mono); letter-spacing:-0.02em; }
+.logo h1 span { color:var(--dim); font-weight:400; }
+.header-actions { display:flex; gap:8px; align-items:center; }
+.timer { font-family:var(--mono); font-size:14px; font-weight:600; color:var(--accent); padding:6px 12px; background:var(--surface); border-radius:6px; }
+
+/* Buttons */
+.btn { padding:8px 16px; border-radius:8px; font-family:var(--mono); font-size:11px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--dim); transition:all 0.2s; }
+.btn:hover { border-color:var(--accent); color:var(--text); }
+.btn-primary { background:linear-gradient(135deg,var(--accent),var(--accent2)); border:none; color:var(--bg); font-weight:600; }
+.btn-primary:hover { opacity:0.9; transform:translateY(-1px); }
+.btn-green { background:var(--green); border:none; color:#fff; font-weight:600; }
+.btn-red { background:var(--red); border:none; color:#fff; }
+.btn-sm { padding:6px 12px; font-size:10px; }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Phases */
+.phases { display:flex; gap:2px; margin-bottom:24px; }
+.phase { flex:1; text-align:center; padding:12px 8px; background:var(--surface); border-radius:8px; border:1px solid var(--border); transition:all 0.3s; }
+.phase.active { border-color:var(--accent); background:rgba(94,234,212,0.05); }
+.phase.done { border-color:var(--green); }
+.phase-num { font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:4px; }
+.phase.active .phase-num { color:var(--accent); }
+.phase.done .phase-num { color:var(--green); }
+.phase-name { font-family:var(--mono); font-size:11px; color:var(--dim); font-weight:500; }
+.phase.active .phase-name { color:var(--text); }
+
+/* Cards */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; animation:fadeIn 0.3s ease; }
+.card-title { font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.card-title .icon { color:var(--accent); }
+
+/* Form elements */
+.input-group { margin-bottom:16px; }
+.input-group label { display:block; font-family:var(--mono); font-size:10px; color:var(--dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; }
+.input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:var(--mono); font-size:12px; outline:none; transition:border-color 0.2s; }
+.input:focus { border-color:var(--accent); }
+.input::placeholder { color:var(--muted); }
+textarea.input { min-height:120px; resize:vertical; line-height:1.6; }
+
+/* Upload */
+.upload-zone { border:2px dashed var(--border); border-radius:12px; padding:48px; text-align:center; cursor:pointer; transition:all 0.3s; }
+.upload-zone:hover { border-color:var(--accent); background:rgba(94,234,212,0.02); }
+.upload-zone.dragover { border-color:var(--accent); background:rgba(94,234,212,0.05); }
+.upload-icon { font-size:32px; margin-bottom:12px; opacity:0.4; }
+.upload-text { font-family:var(--mono); font-size:13px; color:var(--text); margin-bottom:6px; }
+.upload-hint { font-family:var(--mono); font-size:11px; color:var(--dim); }
+
+/* Parsed sections */
+.parsed-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin-bottom:16px; }
+.parsed-item { background:var(--bg); border-radius:8px; padding:10px 12px; border:1px solid var(--border); }
+.parsed-label { font-family:var(--mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:4px; }
+.parsed-value { font-family:var(--mono); font-size:11px; color:var(--accent); word-break:break-word; }
+
+/* Agents */
+.agents-section { margin-bottom:16px; }
+.agents-section-title { font-family:var(--mono); font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.agents-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:10px; }
+.agent-card { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; transition:all 0.3s; }
+.agent-card.running { border-color:var(--blue); box-shadow:0 0 20px rgba(59,130,246,0.1); }
+.agent-card.done { opacity:0.7; border-color:var(--green); }
+.agent-card.error { border-color:var(--red); }
+.agent-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.agent-name { font-family:var(--mono); font-size:11px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.agent-dot { width:8px; height:8px; border-radius:50%; background:var(--muted); }
+.agent-dot.running { background:var(--blue); animation:blink 1s infinite; }
+.agent-dot.done { background:var(--green); }
+.agent-dot.error { background:var(--red); }
+.agent-type { font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:4px; background:var(--surface); color:var(--dim); }
+.agent-desc { font-size:11px; color:var(--dim); margin-bottom:10px; line-height:1.5; }
+.agent-progress { height:3px; background:var(--border); border-radius:2px; overflow:hidden; }
+.agent-progress-fill { height:100%; background:var(--accent); transition:width 0.3s; }
+.agent-status { display:flex; justify-content:space-between; margin-top:6px; font-family:var(--mono); font-size:9px; color:var(--muted); }
+
+/* File Review */
+.review-list { display:flex; flex-direction:column; gap:8px; }
+.review-item { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px 16px; display:flex; align-items:center; gap:12px; transition:all 0.2s; }
+.review-item:hover { border-color:var(--border-light); }
+.review-item.approved { border-color:var(--green); background:rgba(34,197,94,0.03); }
+.review-item.needs-work { border-color:var(--amber); background:rgba(245,158,11,0.03); }
+.review-checkbox { width:20px; height:20px; border-radius:6px; border:2px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:12px; transition:all 0.2s; flex-shrink:0; }
+.review-checkbox.approved { background:var(--green); border-color:var(--green); color:#fff; }
+.review-checkbox.needs-work { background:var(--amber); border-color:var(--amber); color:#fff; }
+.review-info { flex:1; min-width:0; }
+.review-path { font-family:var(--mono); font-size:11px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.review-agent { font-family:var(--mono); font-size:9px; color:var(--dim); margin-top:2px; }
+.review-actions { display:flex; gap:6px; flex-shrink:0; }
+.review-feedback { width:100%; margin-top:8px; }
+.review-feedback textarea { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-family:var(--mono); font-size:10px; resize:none; height:60px; }
+
+/* File Preview Panel */
+.preview-panel { display:grid; grid-template-columns:280px 1fr; gap:1px; background:var(--border); border-radius:12px; overflow:hidden; height:500px; }
+.file-tree { background:var(--surface); overflow-y:auto; padding:12px 0; }
+.file-tree-title { font-family:var(--mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; padding:0 12px 8px; }
+.file-item { padding:6px 12px; font-family:var(--mono); font-size:11px; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.15s; }
+.file-item:hover { background:var(--surface2); }
+.file-item.selected { background:var(--surface3); color:var(--accent); border-left:2px solid var(--accent); }
+.file-item.dir { color:var(--text); font-weight:500; }
+.file-item.file { color:var(--dim); padding-left:24px; }
+.file-icon { font-size:10px; opacity:0.5; }
+.file-preview { background:var(--bg); display:flex; flex-direction:column; }
+.preview-header { background:var(--surface); padding:10px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.preview-path { font-family:var(--mono); font-size:11px; color:var(--text); }
+.preview-actions { display:flex; gap:6px; }
+.preview-content { flex:1; overflow:auto; padding:16px; }
+.preview-content pre { font-family:var(--mono); font-size:11px; line-height:1.7; color:#94a3b8; white-space:pre-wrap; word-break:break-word; }
+.preview-empty { display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-family:var(--mono); font-size:12px; }
+
+/* Logs */
+.log-panel { background:var(--bg); border:1px solid var(--border); border-radius:10px; height:200px; overflow-y:auto; padding:12px; }
+.log-line { font-family:var(--mono); font-size:10px; line-height:1.8; }
+.log-time { color:var(--muted); }
+.log-agent { color:var(--dim); }
+.log-msg { color:var(--dim); }
+.log-msg.info { color:var(--blue); }
+.log-msg.success { color:var(--green); }
+.log-msg.error { color:var(--red); }
+.log-msg.warn { color:var(--amber); }
+
+/* Stats */
+.stats-bar { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 16px; flex:1; min-width:100px; }
+.stat-label { font-family:var(--mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+.stat-value { font-family:var(--mono); font-size:20px; font-weight:700; margin-top:2px; }
+
+/* Debug report */
+.bug-list { display:flex; flex-direction:column; gap:8px; }
+.bug-item { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; }
+.bug-item.fixed { border-color:var(--green); opacity:0.6; }
+.bug-severity { font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:4px; margin-right:8px; }
+.bug-severity.high { background:rgba(244,63,94,0.15); color:var(--red); }
+.bug-severity.medium { background:rgba(245,158,11,0.15); color:var(--amber); }
+.bug-severity.low { background:rgba(59,130,246,0.15); color:var(--blue); }
+.bug-file { font-family:var(--mono); font-size:11px; color:var(--text); }
+.bug-desc { font-size:11px; color:var(--dim); margin-top:4px; }
+
+/* Utility */
+.flex { display:flex; }
+.flex-1 { flex:1; }
+.gap-8 { gap:8px; }
+.gap-12 { gap:12px; }
+.gap-16 { gap:16px; }
+.mt-16 { margin-top:16px; }
+.mt-24 { margin-top:24px; }
+.mb-8 { margin-bottom:8px; }
+.mb-16 { margin-bottom:16px; }
+.text-center { text-align:center; }
+.text-dim { color:var(--dim); }
+.text-sm { font-size:11px; }
+.font-mono { font-family:var(--mono); }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// LAYERFORGE v3 — Constitution-Driven Multi-Agent Build Orchestrator
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PHASES = [
+  { id: "key", name: "API Key" },
+  { id: "upload", name: "Upload" },
+  { id: "review-const", name: "Review" },
+  { id: "build", name: "Build" },
+  { id: "debug", name: "Debug" },
+  { id: "fix", name: "Fix" },
+  { id: "checklist", name: "Checklist" },
+  { id: "output", name: "Output" }
+];
+
+let state = {
+  phase: 0,
+  apiKey: "",
+  constitution: null,
+  rawText: "",
+  fileName: "",
+  agents: [],
+  files: [],
+  logs: [],
+  bugs: [],
+  isRunning: false,
+  elapsed: 0,
+  timerInterval: null,
+  selectedFile: null,
+  expandedDirs: {},
+  fileReviews: {}, // { path: { status: 'approved'|'needs-work'|null, feedback: '' } }
+  fixAttempts: 0,
+  maxFixAttempts: 3
+};
+
+// ─── PRODUCTION-GRADE SYSTEM PROMPTS ────────────────────────────────────────
+
+const MASTER_SYSTEM_PROMPT = `You are an elite software architect and engineer working within LayerForge, a multi-agent code generation system. You produce production-ready, deployable code that meets the highest industry standards.
+
+## Core Principles
+
+1. **Type Safety**: Every variable, parameter, return type, and property must be explicitly typed. No \`any\` types unless absolutely unavoidable.
+
+2. **Error Handling**: Every async operation must have try/catch. Every potential failure point must be handled gracefully. Never let errors crash silently.
+
+3. **Security First**: Validate all inputs. Sanitize all outputs. Never trust user data. Use parameterized queries. Implement proper authentication checks.
+
+4. **Code Organization**: 
+   - One responsibility per file
+   - Clear imports at the top
+   - Constants before functions
+   - Export at the bottom
+   - Maximum 200 lines per file (split if longer)
+
+5. **Documentation**: JSDoc comments for all exported functions with @param, @returns, and @throws.
+
+6. **Naming Conventions**:
+   - camelCase for variables and functions
+   - PascalCase for types, interfaces, classes, components
+   - SCREAMING_SNAKE_CASE for constants
+   - kebab-case for file names
+
+7. **Import Rules**:
+   - Use relative paths for local imports: \`./\` or \`../\`
+   - Group imports: external libs, then internal modules, then types
+   - Always include file extensions in imports where required
+
+## Output Format
+
+Return ONLY a valid JSON array of files. Each file object must have:
+- "path": Full path from project root (e.g., "src/components/Button.tsx")
+- "content": Complete file content as a string
+- "language": File language (e.g., "typescript", "json", "css")
+
+No markdown. No backticks. No explanations. Just the JSON array.`;
+
+const getAgentPrompt = (agent, constitution, sharedContext, allAgents) => {
+  const dependencies = agent.dependsOn || [];
+  const depContext = dependencies.length > 0 
+    ? `\n\n## Dependencies (code from agents you depend on — import from these paths):\n${sharedContext}`
+    : '';
+  
+  const otherAgents = allAgents.filter(a => a.id !== agent.id).map(a => `- ${a.name}: ${a.description}`).join('\n');
+
+  return `${MASTER_SYSTEM_PROMPT}
+
+## Your Role: ${agent.name}
+
+${agent.systemPrompt || agent.description}
+
+## Project Constitution
+
+${constitution.raw}
+
+## Your Specific Tasks
+
+${(agent.tasks || []).map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+## Other Agents in This Build (for reference)
+
+${otherAgents}
+${depContext}
+
+## Critical Requirements
+
+1. Your code must work with the other agents' code. Use correct import paths.
+2. Generate complete, runnable files — not snippets or pseudocode.
+3. Include all necessary imports, type definitions, and error handling.
+4. Follow the project's tech stack exactly as specified in the constitution.
+5. Generate ${agent.expectedFiles || '2-5'} files that fully cover your tasks.
+
+Now generate the code files for your assigned responsibilities.`;
+};
+
+const DEBUG_AGENT_PROMPT = `${MASTER_SYSTEM_PROMPT}
+
+## Your Role: Debug Agent
+
+You are a meticulous code reviewer and debugger. You analyze all generated files and identify issues that would prevent the code from running or cause bugs in production.
+
+## What to Check
+
+1. **Import Errors**: Missing imports, wrong paths, circular dependencies
+2. **Type Errors**: Mismatched types, missing type definitions, incorrect generics
+3. **Runtime Errors**: Null/undefined access, missing error handling, race conditions
+4. **Security Issues**: SQL injection, XSS, missing auth checks, exposed secrets
+5. **Logic Errors**: Incorrect business logic, edge cases not handled
+6. **Missing Files**: References to files that don't exist
+7. **Inconsistencies**: Different files using different conventions or conflicting implementations
+
+## Output Format
+
+Return a JSON array of bugs found:
+[
+  {
+    "severity": "high" | "medium" | "low",
+    "file": "path/to/file.ts",
+    "line": 42,
+    "issue": "Short description",
+    "details": "Full explanation of the problem",
+    "suggestion": "How to fix it"
+  }
+]
+
+If no bugs found, return an empty array: []
+
+No markdown. No backticks. Just the JSON array.`;
+
+const FIX_AGENT_PROMPT = `${MASTER_SYSTEM_PROMPT}
+
+## Your Role: Fix Agent
+
+You receive bug reports and the original files. Your job is to surgically fix the bugs WITHOUT rewriting entire files. Preserve the original structure and only change what's necessary.
+
+## Rules
+
+1. Fix ONLY the reported bugs — don't refactor unrelated code
+2. Maintain the original code style and patterns
+3. Add comments explaining critical fixes: \`// FIX: [bug description]\`
+4. If a fix requires changes in multiple files, include all of them
+5. Ensure fixes don't introduce new bugs
+
+## Output Format
+
+Return ONLY the files that need changes, with the complete fixed content:
+[
+  {
+    "path": "path/to/fixed-file.ts",
+    "content": "complete file content with fixes applied",
+    "language": "typescript"
+  }
+]
+
+No markdown. No backticks. Just the JSON array.`;
+
+// ─── CONSTITUTION PARSER ────────────────────────────────────────────────────
+
+function parseConstitution(text) {
+  const c = {
+    raw: text,
+    projectName: "",
+    description: "",
+    techStack: {},
+    agents: [],
+    businessLogic: [],
+    dataModels: [],
+    platforms: [],
+    features: {},
+    auth: {},
+    deployment: {}
+  };
+
+  const lines = text.split('\n');
+  
+  // Find project name (first # heading)
+  const titleLine = lines.find(l => l.match(/^#\s+[^#]/));
+  if (titleLine) c.projectName = titleLine.replace(/^#\s+/, '').trim();
+
+  // Find description
+  const descLine = lines.find(l => l.match(/^Description:/i));
+  if (descLine) c.description = descLine.replace(/^Description:\s*/i, '').trim();
+
+  // Find all ## section boundaries
+  const sectionStarts = [];
+  lines.forEach((line, i) => {
+    if (line.match(/^##\s+[^#]/)) {
+      sectionStarts.push({ index: i, name: line.replace(/^##\s+/, '').trim().toLowerCase() });
+    }
+  });
+
+  // Helper to get section content
+  function getSectionLines(sectionName) {
+    const start = sectionStarts.find(s => s.name === sectionName || s.name.startsWith(sectionName));
+    if (!start) return [];
+    const startIdx = start.index + 1;
+    const nextSection = sectionStarts.find(s => s.index > start.index);
+    const endIdx = nextSection ? nextSection.index : lines.length;
+    return lines.slice(startIdx, endIdx).filter(l => l.trim() !== '---');
+  }
+
+  // Tech Stack
+  const techLines = getSectionLines('tech stack');
+  const techPatterns = ['language', 'frontend', 'backend', 'database', 'storage', 'styling', 'payments', 'maps', 'orm', 'hosting', 'testing'];
+  techLines.forEach(line => {
+    techPatterns.forEach(key => {
+      if (line.toLowerCase().startsWith(key + ':')) {
+        c.techStack[key] = line.split(':').slice(1).join(':').trim();
+      }
+    });
+  });
+
+  // Platforms
+  const platformLines = getSectionLines('platforms');
+  platformLines.forEach(line => {
+    if (line.match(/^-\s+/)) {
+      c.platforms.push(line.replace(/^-\s+/, '').trim());
+    }
+  });
+
+  // Business Logic
+  const bizLines = getSectionLines('business logic');
+  bizLines.forEach(line => {
+    if (line.match(/^-\s+/)) {
+      c.businessLogic.push(line.replace(/^-\s+/, '').trim());
+    }
+  });
+
+  // Authentication
+  const authLines = getSectionLines('auth');
+  authLines.forEach(line => {
+    if (line.match(/^Methods?:/i)) {
+      c.auth.methods = line.split(':').slice(1).join(':').trim().split(/,\s*/);
+    } else if (line.match(/^Roles?:/i)) {
+      c.auth.roles = line.split(':').slice(1).join(':').trim().split(/,\s*/);
+    } else if (line.match(/^Provider:/i)) {
+      c.auth.provider = line.split(':').slice(1).join(':').trim();
+    }
+  });
+
+  // Data Models
+  const modelLines = getSectionLines('data models');
+  let currentModel = null;
+  let inFields = false;
+  modelLines.forEach(line => {
+    if (line.match(/^###\s+/)) {
+      if (currentModel && currentModel.fields.length > 0) {
+        c.dataModels.push(currentModel);
+      }
+      currentModel = { name: line.replace(/^###\s+/, '').trim(), fields: [] };
+      inFields = false;
+    } else if (line.match(/^Fields:/i)) {
+      inFields = true;
+    } else if (currentModel && inFields && line.match(/^-\s+/)) {
+      currentModel.fields.push(line.replace(/^-\s+/, '').trim());
+    }
+  });
+  if (currentModel && currentModel.fields.length > 0) {
+    c.dataModels.push(currentModel);
+  }
+
+  // Features
+  const featureLines = getSectionLines('features');
+  let currentPlatform = 'General';
+  featureLines.forEach(line => {
+    if (line.match(/^###\s+/)) {
+      currentPlatform = line.replace(/^###\s+/, '').trim();
+      c.features[currentPlatform] = [];
+    } else if (line.match(/^-\s+/)) {
+      if (!c.features[currentPlatform]) c.features[currentPlatform] = [];
+      c.features[currentPlatform].push(line.replace(/^-\s+/, '').trim());
+    }
+  });
+
+  // AGENTS - the critical part
+  const agentLines = getSectionLines('agents');
+  let currentAgent = null;
+  let inTasks = false;
+  
+  agentLines.forEach(line => {
+    // New agent starts with ### 
+    if (line.match(/^###\s+/)) {
+      // Save previous agent
+      if (currentAgent) {
+        c.agents.push(currentAgent);
+      }
+      const name = line.replace(/^###\s+/, '').trim();
+      currentAgent = {
+        id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').replace(/^-+/, ''),
+        name: name,
+        description: "",
+        type: "custom",
+        tasks: [],
+        dependsOn: [],
+        systemPrompt: "",
+        expectedFiles: "2-5"
+      };
+      inTasks = false;
+    } else if (currentAgent) {
+      // Parse agent fields
+      if (line.match(/^Type:/i)) {
+        currentAgent.type = line.replace(/^Type:\s*/i, '').trim().toLowerCase();
+        inTasks = false;
+      } else if (line.match(/^Description:/i)) {
+        currentAgent.description = line.replace(/^Description:\s*/i, '').trim();
+        inTasks = false;
+      } else if (line.match(/^Depends On:/i)) {
+        const deps = line.replace(/^Depends On:\s*/i, '').trim();
+        currentAgent.dependsOn = deps.split(/,\s*/).map(d => 
+          d.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '').replace(/^-+/, '')
+        ).filter(Boolean);
+        inTasks = false;
+      } else if (line.match(/^Tasks:/i)) {
+        inTasks = true;
+      } else if (line.match(/^Expected Files:/i)) {
+        currentAgent.expectedFiles = line.replace(/^Expected Files:\s*/i, '').trim();
+        inTasks = false;
+      } else if (line.match(/^System Prompt:/i)) {
+        currentAgent.systemPrompt = line.replace(/^System Prompt:\s*/i, '').trim();
+        inTasks = false;
+      } else if (inTasks && line.match(/^-\s+/)) {
+        currentAgent.tasks.push(line.replace(/^-\s+/, '').trim());
+      }
+    }
+  });
+  
+  // Don't forget to push the last agent
+  if (currentAgent) {
+    c.agents.push(currentAgent);
+  }
+
+  console.log('Parsed agents:', c.agents.length, c.agents.map(a => a.name));
+  console.log('Parsed business logic:', c.businessLogic.length);
+  console.log('Parsed platforms:', c.platforms);
+  
+  return c;
+}
+
+// ─── API CALL ───────────────────────────────────────────────────────────────
+
+async function callAPI(prompt, systemPrompt = null) {
+  const messages = [{ role: "user", content: prompt }];
+  
+  const body = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 8000,
+    messages
+  };
+  
+  if (systemPrompt) {
+    body.system = systemPrompt;
+  }
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": state.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.content.map(c => c.text || "").join("");
+}
+
+// ─── LOGGING ────────────────────────────────────────────────────────────────
+
+function log(agent, message, type = "info") {
+  const time = new Date().toLocaleTimeString("en-US", { hour12: false });
+  state.logs.push({ time, agent, message, type });
+  if (state.logs.length > 500) state.logs = state.logs.slice(-500);
+  render();
+  requestAnimationFrame(() => {
+    const logEl = document.querySelector('.log-panel');
+    if (logEl) logEl.scrollTop = logEl.scrollHeight;
+  });
+}
+
+// ─── BUILD EXECUTION ────────────────────────────────────────────────────────
+
+async function executeBuild() {
+  state.isRunning = true;
+  state.files = [];
+  state.logs = [];
+  state.bugs = [];
+  state.elapsed = 0;
+  state.fixAttempts = 0;
+  state.fileReviews = {};
+  state.phase = 3; // Build phase
+
+  state.timerInterval = setInterval(() => { state.elapsed++; render(); }, 1000);
+
+  log("SYSTEM", "Build pipeline initiated", "info");
+  log("SYSTEM", `Project: ${state.constitution.projectName}`, "info");
+  log("SYSTEM", `Agents: ${state.agents.length}`, "info");
+
+  // Sort agents by dependencies (topological sort)
+  const sortedAgents = topologicalSort(state.agents);
+  let sharedContext = "";
+
+  // Execute agents
+  for (const agent of sortedAgents) {
+    if (!state.isRunning) break;
+
+    agent.status = "running";
+    agent.progress = 0;
+    render();
+
+    log(agent.name, "Starting agent", "info");
+
+    try {
+      const prompt = getAgentPrompt(agent, state.constitution, sharedContext, state.agents);
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        if (agent.progress < 90) {
+          agent.progress += Math.random() * 15;
+          render();
+        }
+      }, 500);
+
+      const result = await callAPI(prompt);
+      clearInterval(progressInterval);
+
+      let files;
+      try {
+        files = JSON.parse(result.replace(/```json\s*/g, '').replace(/```/g, '').trim());
+      } catch {
+        files = [{ path: `${agent.id}/output.txt`, content: result, language: "text" }];
+        log(agent.name, "Warning: Output was not valid JSON", "warn");
+      }
+
+      // Add files to state
+      files.forEach(f => {
+        state.files.push({ ...f, agent: agent.name, agentId: agent.id });
+      });
+
+      // Update shared context for dependent agents
+      const fileSummary = files.map(f => `// File: ${f.path}\n${f.content.slice(0, 1000)}${f.content.length > 1000 ? '\n// ...' : ''}`).join('\n\n');
+      sharedContext += `\n\n// === ${agent.name} ===\n${fileSummary}`;
+
+      agent.status = "done";
+      agent.progress = 100;
+      log(agent.name, `Complete: ${files.length} files generated`, "success");
+
+    } catch (err) {
+      agent.status = "error";
+      agent.error = err.message;
+      log(agent.name, `Error: ${err.message}`, "error");
+    }
+
+    render();
+  }
+
+  if (state.isRunning) {
+    log("SYSTEM", "Build complete. Starting debug phase...", "info");
+    await runDebugPhase();
+  }
+}
+
+function topologicalSort(agents) {
+  const sorted = [];
+  const visited = new Set();
+  const agentMap = new Map(agents.map(a => [a.id, a]));
+
+  function visit(agent) {
+    if (visited.has(agent.id)) return;
+    visited.add(agent.id);
+    (agent.dependsOn || []).forEach(depId => {
+      const dep = agentMap.get(depId);
+      if (dep) visit(dep);
+    });
+    sorted.push(agent);
+  }
+
+  agents.forEach(visit);
+  return sorted;
+}
+
+// ─── DEBUG PHASE ────────────────────────────────────────────────────────────
+
+async function runDebugPhase() {
+  state.phase = 4; // Debug phase
+  render();
+
+  log("DEBUG", "Analyzing generated code...", "info");
+
+  const allCode = state.files.map(f => `// File: ${f.path}\n${f.content}`).join('\n\n---\n\n');
+  
+  const prompt = `Analyze the following generated codebase for bugs and issues:\n\n${allCode}`;
+
+  try {
+    const result = await callAPI(prompt, DEBUG_AGENT_PROMPT);
+    
+    let bugs;
+    try {
+      bugs = JSON.parse(result.replace(/```json\s*/g, '').replace(/```/g, '').trim());
+    } catch {
+      bugs = [];
+    }
+
+    state.bugs = bugs;
+
+    if (bugs.length === 0) {
+      log("DEBUG", "No bugs found! Code looks clean.", "success");
+      state.phase = 6; // Skip to checklist
+    } else {
+      log("DEBUG", `Found ${bugs.length} issues`, "warn");
+      bugs.forEach(bug => {
+        log("DEBUG", `[${bug.severity.toUpperCase()}] ${bug.file}: ${bug.issue}`, bug.severity === 'high' ? 'error' : 'warn');
+      });
+      
+      // Move to fix phase
+      await runFixPhase();
+    }
+
+  } catch (err) {
+    log("DEBUG", `Debug failed: ${err.message}`, "error");
+    state.phase = 6; // Move to checklist anyway
+  }
+
+  render();
+}
+
+// ─── FIX PHASE ──────────────────────────────────────────────────────────────
+
+async function runFixPhase() {
+  state.phase = 5; // Fix phase
+  state.fixAttempts++;
+  render();
+
+  if (state.fixAttempts > state.maxFixAttempts) {
+    log("FIX", `Max fix attempts (${state.maxFixAttempts}) reached. Moving to manual review.`, "warn");
+    state.phase = 6;
+    return;
+  }
+
+  log("FIX", `Fix attempt ${state.fixAttempts}/${state.maxFixAttempts}`, "info");
+
+  const bugsToFix = state.bugs.filter(b => !b.fixed);
+  if (bugsToFix.length === 0) {
+    log("FIX", "All bugs fixed!", "success");
+    state.phase = 6;
+    return;
+  }
+
+  const affectedFiles = [...new Set(bugsToFix.map(b => b.file))];
+  const filesToFix = state.files.filter(f => affectedFiles.includes(f.path));
+
+  const prompt = `Fix the following bugs in the provided code:
+
+## Bugs to Fix
+${bugsToFix.map(b => `- [${b.severity}] ${b.file} (line ${b.line}): ${b.issue}\n  Details: ${b.details}\n  Suggestion: ${b.suggestion}`).join('\n\n')}
+
+## Files with Bugs
+${filesToFix.map(f => `// File: ${f.path}\n${f.content}`).join('\n\n---\n\n')}`;
+
+  try {
+    const result = await callAPI(prompt, FIX_AGENT_PROMPT);
+    
+    let fixedFiles;
+    try {
+      fixedFiles = JSON.parse(result.replace(/```json\s*/g, '').replace(/```/g, '').trim());
+    } catch {
+      log("FIX", "Fix agent returned invalid response. Attempting regeneration...", "warn");
+      await regenerateAffectedAgents(affectedFiles);
+      return;
+    }
+
+    // Apply fixes
+    fixedFiles.forEach(fixed => {
+      const idx = state.files.findIndex(f => f.path === fixed.path);
+      if (idx !== -1) {
+        state.files[idx] = { ...state.files[idx], ...fixed };
+        log("FIX", `Patched: ${fixed.path}`, "success");
+      }
+    });
+
+    // Mark bugs as fixed (optimistically)
+    bugsToFix.forEach(b => b.fixed = true);
+
+    // Re-run debug to verify
+    log("FIX", "Verifying fixes...", "info");
+    await runDebugPhase();
+
+  } catch (err) {
+    log("FIX", `Fix failed: ${err.message}. Attempting regeneration...`, "error");
+    await regenerateAffectedAgents(affectedFiles);
+  }
+}
+
+async function regenerateAffectedAgents(affectedFiles) {
+  log("REGEN", "Regenerating affected agents...", "info");
+
+  // Find which agents produced the affected files
+  const affectedAgentIds = [...new Set(
+    state.files
+      .filter(f => affectedFiles.includes(f.path))
+      .map(f => f.agentId)
+  )];
+
+  // Remove their files
+  state.files = state.files.filter(f => !affectedAgentIds.includes(f.agentId));
+
+  // Reset and re-run those agents
+  const agentsToRerun = state.agents.filter(a => affectedAgentIds.includes(a.id));
+  
+  let sharedContext = state.files.map(f => `// File: ${f.path}\n${f.content.slice(0, 500)}`).join('\n\n');
+
+  for (const agent of agentsToRerun) {
+    agent.status = "running";
+    agent.progress = 0;
+    render();
+
+    log(agent.name, "Regenerating...", "info");
+
+    try {
+      const prompt = getAgentPrompt(agent, state.constitution, sharedContext, state.agents);
+      const result = await callAPI(prompt);
+
+      let files;
+      try {
+        files = JSON.parse(result.replace(/```json\s*/g, '').replace(/```/g, '').trim());
+      } catch {
+        files = [{ path: `${agent.id}/output.txt`, content: result, language: "text" }];
+      }
+
+      files.forEach(f => state.files.push({ ...f, agent: agent.name, agentId: agent.id }));
+
+      agent.status = "done";
+      agent.progress = 100;
+      log(agent.name, `Regenerated: ${files.length} files`, "success");
+
+    } catch (err) {
+      agent.status = "error";
+      log(agent.name, `Regeneration failed: ${err.message}`, "error");
+    }
+  }
+
+  // Re-run debug
+  state.bugs = state.bugs.map(b => ({ ...b, fixed: false }));
+  await runDebugPhase();
+}
+
+// ─── FILE PREVIEW ───────────────────────────────────────────────────────────
+
+function openPreview(file) {
+  const previewWindow = window.open('', '_blank', 'width=1000,height=700');
+  
+  if (file.language === 'html' || file.path.endsWith('.html')) {
+    previewWindow.document.write(file.content);
+  } else if (file.path.endsWith('.jsx') || file.path.endsWith('.tsx')) {
+    // For React, create a simple preview environment
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview: ${file.path}</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <style>body { font-family: system-ui, sans-serif; padding: 20px; }</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    ${file.content.replace(/<\/script>/g, '<\\/script>')}
+    
+    // Try to render if there's a default export
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      if (typeof App !== 'undefined') root.render(<App />);
+      else if (typeof Default !== 'undefined') root.render(<Default />);
+    } catch(e) {
+      document.getElementById('root').innerHTML = '<pre style="color:red">' + e.message + '</pre>';
+    }
+  <\/script>
+</body>
+</html>`;
+    previewWindow.document.write(html);
+  } else if (file.path.endsWith('.mermaid') || file.language === 'mermaid') {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Preview: ${file.path}</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"><\/script>
+</head>
+<body>
+  <div class="mermaid">${file.content}</div>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });<\/script>
+</body>
+</html>`;
+    previewWindow.document.write(html);
+  } else {
+    // Code preview with syntax highlighting
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Preview: ${file.path}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"><\/script>
+  <style>
+    body { margin: 0; background: #0d1117; }
+    pre { margin: 0; padding: 20px; }
+    code { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <pre><code class="language-${file.language || 'plaintext'}">${escapeHtml(file.content)}</code></pre>
+  <script>hljs.highlightAll();<\/script>
+</body>
+</html>`;
+    previewWindow.document.write(html);
+  }
+  
+  previewWindow.document.close();
+}
+
+function openSchemaPreview() {
+  const schemaFiles = state.files.filter(f => 
+    f.path.includes('schema') || 
+    f.path.includes('model') || 
+    f.path.endsWith('.prisma')
+  );
+
+  if (schemaFiles.length === 0) {
+    alert('No schema files found');
+    return;
+  }
+
+  // Generate mermaid ERD from schema
+  let mermaidCode = 'erDiagram\n';
+  
+  state.constitution.dataModels.forEach(model => {
+    mermaidCode += `    ${model.name} {\n`;
+    model.fields.forEach(field => {
+      const parts = field.split(/\s*[:\-]\s*/);
+      if (parts.length >= 2) {
+        mermaidCode += `        ${parts[1].replace(/[^a-zA-Z]/g, '')} ${parts[0].replace(/[^a-zA-Z]/g, '')}\n`;
+      }
+    });
+    mermaidCode += `    }\n`;
+  });
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Database Schema</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"><\/script>
+  <style>
+    body { background: #0d1117; display: flex; justify-content: center; padding: 40px; }
+    .mermaid { background: #161b22; padding: 40px; border-radius: 12px; }
+  </style>
+</head>
+<body>
+  <div class="mermaid">${mermaidCode}</div>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });<\/script>
+</body>
+</html>`;
+
+  const previewWindow = window.open('', '_blank', 'width=1200,height=800');
+  previewWindow.document.write(html);
+  previewWindow.document.close();
+}
+
+// ─── DOWNLOAD ───────────────────────────────────────────────────────────────
+
+function downloadAll() {
+  const output = {
+    project: state.constitution.projectName,
+    generated: new Date().toISOString(),
+    files: state.files
+  };
+  
+  const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${state.constitution.projectName || 'layerforge'}-output.json`;
+  a.click();
+}
+
+function downloadFile(file) {
+  const blob = new Blob([file.content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = file.path.split('/').pop();
+  a.click();
+}
+
+// ─── REVIEW FUNCTIONS ───────────────────────────────────────────────────────
+
+function setFileReview(path, status) {
+  if (!state.fileReviews[path]) state.fileReviews[path] = { status: null, feedback: '' };
+  state.fileReviews[path].status = state.fileReviews[path].status === status ? null : status;
+  render();
+}
+
+function setFileFeedback(path, feedback) {
+  if (!state.fileReviews[path]) state.fileReviews[path] = { status: null, feedback: '' };
+  state.fileReviews[path].feedback = feedback;
+}
+
+async function applyFeedbackAndRegenerate() {
+  const needsWork = Object.entries(state.fileReviews)
+    .filter(([_, r]) => r.status === 'needs-work')
+    .map(([path, r]) => ({ path, feedback: r.feedback }));
+
+  if (needsWork.length === 0) {
+    log("REVIEW", "No files marked for revision", "info");
+    state.phase = 7; // Output
+    render();
+    return;
+  }
+
+  state.isRunning = true;
+  state.phase = 5; // Fix phase
+  render();
+
+  log("REVIEW", `Regenerating ${needsWork.length} files with feedback...`, "info");
+
+  for (const item of needsWork) {
+    const fileIdx = state.files.findIndex(f => f.path === item.path);
+    if (fileIdx === -1) continue;
+
+    const file = state.files[fileIdx];
+    log("REGEN", `Updating: ${file.path}`, "info");
+
+    const prompt = `You previously generated this file:
+
+// File: ${file.path}
+${file.content}
+
+The user has requested changes:
+"${item.feedback}"
+
+Regenerate the complete file with the requested changes applied. Maintain the same structure and patterns, but incorporate the feedback.
+
+Return ONLY the file in this JSON format:
+[{"path": "${file.path}", "content": "...", "language": "${file.language}"}]`;
+
+    try {
+      const result = await callAPI(prompt, MASTER_SYSTEM_PROMPT);
+      const parsed = JSON.parse(result.replace(/```json\s*/g, '').replace(/```/g, '').trim());
+      
+      if (parsed[0]) {
+        state.files[fileIdx] = { ...state.files[fileIdx], ...parsed[0] };
+        state.fileReviews[item.path] = { status: null, feedback: '' };
+        log("REGEN", `Updated: ${file.path}`, "success");
+      }
+    } catch (err) {
+      log("REGEN", `Failed to update ${file.path}: ${err.message}`, "error");
+    }
+  }
+
+  state.isRunning = false;
+  state.phase = 6; // Back to checklist
+  render();
+}
+
+// ─── UTILITIES ──────────────────────────────────────────────────────────────
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+}
+
+function buildFileTree(files) {
+  const tree = {};
+  files.forEach(f => {
+    const parts = f.path.split('/');
+    let current = tree;
+    parts.forEach((part, i) => {
+      if (i === parts.length - 1) {
+        current[part] = { _file: true, ...f };
+      } else {
+        if (!current[part]) current[part] = {};
+        current = current[part];
+      }
+    });
+  });
+  return tree;
+}
+
+function stopExecution() {
+  state.isRunning = false;
+  clearInterval(state.timerInterval);
+  log("SYSTEM", "Execution stopped", "warn");
+  render();
+}
+
+function reset() {
+  clearInterval(state.timerInterval);
+  state = {
+    ...state,
+    phase: 1,
+    constitution: null,
+    rawText: "",
+    fileName: "",
+    agents: [],
+    files: [],
+    logs: [],
+    bugs: [],
+    isRunning: false,
+    elapsed: 0,
+    selectedFile: null,
+    fileReviews: {},
+    fixAttempts: 0
+  };
+  render();
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────────────────
+
+function render() {
+  const app = document.getElementById('app');
+  
+  const header = `
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon">◈</div>
+        <h1>LAYERFORGE <span>v3</span></h1>
+      </div>
+      <div class="header-actions">
+        ${state.isRunning ? `<div class="timer">${formatTime(state.elapsed)}</div>` : ''}
+        ${state.phase > 1 && !state.isRunning ? `<button class="btn btn-sm" onclick="reset()">Reset</button>` : ''}
+      </div>
+    </div>
+  `;
+
+  const phases = `
+    <div class="phases">
+      ${PHASES.map((p, i) => `
+        <div class="phase ${i === state.phase ? 'active' : ''} ${i < state.phase ? 'done' : ''}">
+          <div class="phase-num">${i + 1}</div>
+          <div class="phase-name">${p.name}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  let content = '';
+
+  // Phase 0: API Key
+  if (state.phase === 0) {
+    content = `
+      <div class="card">
+        <div class="card-title"><span class="icon">🔑</span> API Key</div>
+        <div class="input-group">
+          <label>Anthropic API Key</label>
+          <input class="input" type="password" placeholder="sk-ant-..." value="${state.apiKey}" oninput="state.apiKey=this.value;render()">
+        </div>
+        <p class="text-dim text-sm mb-16">Your key is stored in memory only and never saved.</p>
+        <button class="btn btn-primary" onclick="state.phase=1;render()" ${!state.apiKey.startsWith('sk-ant-') ? 'disabled' : ''}>
+          Continue →
+        </button>
+      </div>
+    `;
+  }
+
+  // Phase 1: Upload
+  else if (state.phase === 1) {
+    content = `
+      <div class="card">
+        <div class="card-title"><span class="icon">📄</span> Upload Constitution</div>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">◈</div>
+          <div class="upload-text">${state.fileName || 'Drop your constitution file here'}</div>
+          <div class="upload-hint">.md, .txt, or .json — built on Claude.ai</div>
+        </div>
+        <input type="file" id="fileInput" accept=".md,.txt,.json" style="display:none" onchange="handleFile(event.target.files[0])">
+      </div>
+    `;
+  }
+
+  // Phase 2: Review Constitution
+  else if (state.phase === 2 && state.constitution) {
+    const c = state.constitution;
+    content = `
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Constitution Review</div>
+        
+        <div class="parsed-grid">
+          ${c.projectName ? `<div class="parsed-item"><div class="parsed-label">Project</div><div class="parsed-value">${c.projectName}</div></div>` : ''}
+          ${Object.entries(c.techStack).map(([k, v]) => v ? `<div class="parsed-item"><div class="parsed-label">${k}</div><div class="parsed-value">${v}</div></div>` : '').join('')}
+          ${c.platforms.length ? `<div class="parsed-item"><div class="parsed-label">Platforms</div><div class="parsed-value">${c.platforms.join(', ')}</div></div>` : ''}
+        </div>
+
+        ${c.agents.length ? `
+          <div class="mb-16">
+            <div class="card-title"><span class="icon">🤖</span> Agents (${c.agents.length})</div>
+            ${c.agents.map(a => `
+              <div style="background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:6px;border:1px solid var(--border)">
+                <div class="font-mono text-sm" style="color:var(--accent)">${a.name}</div>
+                <div class="text-dim text-sm">${a.description || a.tasks.slice(0, 2).join(', ')}</div>
+                ${a.dependsOn.length ? `<div class="text-dim text-sm" style="margin-top:4px">Depends on: ${a.dependsOn.join(', ')}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : '<p class="text-dim text-sm mb-16">No agents defined in constitution. Add an ## Agents section.</p>'}
+
+        ${c.businessLogic.length ? `
+          <div class="mb-16">
+            <div class="card-title"><span class="icon">⚙️</span> Business Logic</div>
+            <ul style="margin:0;padding-left:20px;color:var(--dim);font-size:12px">
+              ${c.businessLogic.slice(0, 10).map(b => `<li>${b}</li>`).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        <div class="flex gap-12 mt-24">
+          <button class="btn" onclick="state.phase=1;render()">← Back</button>
+          <button class="btn btn-primary flex-1" onclick="startBuild()" ${c.agents.length === 0 ? 'disabled' : ''}>
+            Start Build →
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Phase 3-5: Build / Debug / Fix
+  else if (state.phase >= 3 && state.phase <= 5) {
+    const stats = [
+      { label: 'Agents', value: state.agents.length, color: 'var(--accent2)' },
+      { label: 'Running', value: state.agents.filter(a => a.status === 'running').length, color: 'var(--blue)' },
+      { label: 'Done', value: state.agents.filter(a => a.status === 'done').length, color: 'var(--green)' },
+      { label: 'Files', value: state.files.length, color: 'var(--accent)' },
+      { label: 'Bugs', value: state.bugs.filter(b => !b.fixed).length, color: 'var(--red)' }
+    ];
+
+    content = `
+      <div class="stats-bar">
+        ${stats.map(s => `
+          <div class="stat">
+            <div class="stat-label">${s.label}</div>
+            <div class="stat-value" style="color:${s.color}">${s.value}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">${state.phase === 3 ? '🔨' : state.phase === 4 ? '🔍' : '🔧'}</span>
+          ${state.phase === 3 ? 'Building...' : state.phase === 4 ? 'Debugging...' : 'Fixing...'}
+          ${state.isRunning ? `<button class="btn btn-red btn-sm" style="margin-left:auto" onclick="stopExecution()">Stop</button>` : ''}
+        </div>
+
+        <div class="agents-grid mb-16">
+          ${state.agents.map(a => `
+            <div class="agent-card ${a.status || ''}">
+              <div class="agent-header">
+                <div class="agent-name">
+                  <div class="agent-dot ${a.status || ''}"></div>
+                  ${a.name}
+                </div>
+                <div class="agent-type">${a.type}</div>
+              </div>
+              <div class="agent-desc">${a.description || a.tasks.slice(0, 2).join(', ')}</div>
+              <div class="agent-progress">
+                <div class="agent-progress-fill" style="width:${a.progress || 0}%"></div>
+              </div>
+              <div class="agent-status">
+                <span>${a.status === 'running' ? a.tasks[Math.floor((a.progress || 0) / 100 * a.tasks.length)] || 'Processing...' : a.status || 'Queued'}</span>
+                <span>${Math.round(a.progress || 0)}%</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="log-panel">
+          ${state.logs.map(l => `
+            <div class="log-line">
+              <span class="log-time">${l.time}</span>
+              <span class="log-agent">[${l.agent}]</span>
+              <span class="log-msg ${l.type}">${l.message}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // Phase 6: Checklist Review
+  else if (state.phase === 6) {
+    const approvedCount = Object.values(state.fileReviews).filter(r => r.status === 'approved').length;
+    const needsWorkCount = Object.values(state.fileReviews).filter(r => r.status === 'needs-work').length;
+
+    content = `
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">✅</span> Review Files
+          <span class="text-dim text-sm" style="margin-left:auto">
+            ${approvedCount} approved · ${needsWorkCount} needs work · ${state.files.length - approvedCount - needsWorkCount} pending
+          </span>
+        </div>
+
+        <div class="flex gap-8 mb-16">
+          <button class="btn btn-sm" onclick="openSchemaPreview()">📊 View Schema Diagram</button>
+          <button class="btn btn-sm" onclick="downloadAll()">💾 Download All</button>
+        </div>
+
+        <div class="review-list">
+          ${state.files.map(f => {
+            const review = state.fileReviews[f.path] || { status: null, feedback: '' };
+            return `
+              <div class="review-item ${review.status || ''}">
+                <div class="review-checkbox ${review.status || ''}" onclick="setFileReview('${f.path}', '${review.status === 'approved' ? '' : 'approved'}')">
+                  ${review.status === 'approved' ? '✓' : review.status === 'needs-work' ? '!' : ''}
+                </div>
+                <div class="review-info">
+                  <div class="review-path">${f.path}</div>
+                  <div class="review-agent">by ${f.agent}</div>
+                </div>
+                <div class="review-actions">
+                  <button class="btn btn-sm" onclick="previewFile('${f.path}')">Preview</button>
+                  <button class="btn btn-sm" onclick="setFileReview('${f.path}', 'needs-work')" ${review.status === 'needs-work' ? 'style="border-color:var(--amber)"' : ''}>
+                    Needs Work
+                  </button>
+                </div>
+              </div>
+              ${review.status === 'needs-work' ? `
+                <div class="review-feedback">
+                  <textarea placeholder="Describe what needs to change..." oninput="setFileFeedback('${f.path}', this.value)">${review.feedback}</textarea>
+                </div>
+              ` : ''}
+            `;
+          }).join('')}
+        </div>
+
+        <div class="flex gap-12 mt-24">
+          <button class="btn" onclick="state.phase=7;render()">Skip Review →</button>
+          <button class="btn btn-primary flex-1" onclick="applyFeedbackAndRegenerate()" ${needsWorkCount === 0 ? 'disabled' : ''}>
+            Apply Feedback & Regenerate (${needsWorkCount})
+          </button>
+          <button class="btn btn-green" onclick="state.phase=7;render()" ${state.files.length === 0 ? 'disabled' : ''}>
+            Finish →
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Phase 7: Output
+  else if (state.phase === 7) {
+    const tree = buildFileTree(state.files);
+
+    const renderTree = (node, path = '', depth = 0) => {
+      return Object.keys(node)
+        .filter(k => !k.startsWith('_'))
+        .sort((a, b) => {
+          if (node[a]._file && !node[b]._file) return 1;
+          if (!node[a]._file && node[b]._file) return -1;
+          return a.localeCompare(b);
+        })
+        .map(key => {
+          const fullPath = path ? `${path}/${key}` : key;
+          const item = node[key];
+          if (item._file) {
+            const isSelected = state.selectedFile?.path === fullPath;
+            return `<div class="file-item file ${isSelected ? 'selected' : ''}" style="padding-left:${12 + depth * 16}px" onclick="selectFile('${fullPath}')">${key}</div>`;
+          }
+          const isExpanded = state.expandedDirs[fullPath] !== false;
+          return `
+            <div class="file-item dir" style="padding-left:${12 + depth * 16}px" onclick="toggleDir('${fullPath}')">
+              <span class="file-icon">${isExpanded ? '▼' : '▶'}</span> ${key}
+            </div>
+            ${isExpanded ? renderTree(item, fullPath, depth + 1) : ''}
+          `;
+        }).join('');
+    };
+
+    content = `
+      <div class="card">
+        <div class="card-title">
+          <span class="icon">📦</span> Output
+          <span class="text-dim text-sm" style="margin-left:auto">${state.files.length} files</span>
+        </div>
+
+        <div class="flex gap-8 mb-16">
+          <button class="btn btn-sm btn-primary" onclick="downloadAll()">💾 Download All</button>
+          <button class="btn btn-sm" onclick="openSchemaPreview()">📊 Schema Diagram</button>
+          ${state.selectedFile ? `<button class="btn btn-sm" onclick="openPreviewSelected()">🔍 Preview in Tab</button>` : ''}
+        </div>
+
+        <div class="preview-panel">
+          <div class="file-tree">
+            <div class="file-tree-title">Files</div>
+            ${renderTree(tree)}
+          </div>
+          <div class="file-preview">
+            ${state.selectedFile ? `
+              <div class="preview-header">
+                <div class="preview-path">${state.selectedFile.path}</div>
+                <div class="preview-actions">
+                  <button class="btn btn-sm" onclick="downloadFile(state.selectedFile)">Download</button>
+                  <button class="btn btn-sm" onclick="openPreviewSelected()">Open Preview</button>
+                </div>
+              </div>
+              <div class="preview-content">
+                <pre>${escapeHtml(state.selectedFile.content)}</pre>
+              </div>
+            ` : `<div class="preview-empty">Select a file to preview</div>`}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  app.innerHTML = header + phases + content;
+
+  // Setup drag/drop
+  const uploadZone = document.getElementById('uploadZone');
+  if (uploadZone) {
+    uploadZone.ondragover = e => { e.preventDefault(); uploadZone.classList.add('dragover'); };
+    uploadZone.ondragleave = () => uploadZone.classList.remove('dragover');
+    uploadZone.ondrop = e => { e.preventDefault(); uploadZone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); };
+  }
+}
+
+// ─── GLOBAL HANDLERS ────────────────────────────────────────────────────────
+
+window.handleFile = function(file) {
+  if (!file) return;
+  state.fileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.rawText = e.target.result;
+    state.constitution = parseConstitution(state.rawText);
+    state.agents = state.constitution.agents.map(a => ({
+      ...a,
+      status: null,
+      progress: 0,
+      error: null
+    }));
+    state.phase = 2;
+    render();
+  };
+  reader.readAsText(file);
+};
+
+window.startBuild = async function() {
+  await executeBuild();
+};
+
+window.setFileReview = setFileReview;
+window.setFileFeedback = setFileFeedback;
+window.applyFeedbackAndRegenerate = applyFeedbackAndRegenerate;
+
+window.toggleDir = function(path) {
+  state.expandedDirs[path] = state.expandedDirs[path] === false;
+  render();
+};
+
+window.selectFile = function(path) {
+  state.selectedFile = state.files.find(f => f.path === path);
+  render();
+};
+
+window.previewFile = function(path) {
+  const file = state.files.find(f => f.path === path);
+  if (file) openPreview(file);
+};
+
+window.openPreviewSelected = function() {
+  if (state.selectedFile) openPreview(state.selectedFile);
+};
+
+window.downloadFile = downloadFile;
+window.downloadAll = downloadAll;
+window.openSchemaPreview = openSchemaPreview;
+window.stopExecution = stopExecution;
+window.reset = reset;
+
+// ─── INIT ───────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
